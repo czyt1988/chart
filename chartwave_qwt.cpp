@@ -8,7 +8,7 @@
 #include <qwt_legend_label.h>
 #include <qwt_date_scale_draw.h>
 //unsigned int ChartWave_qwt::staticValue_nAutoLineID = 0;//静态变量初始化
-const unsigned int c_rangeMax = 1000;
+
 
 static const QColor static_const_qwt_line_color[14] = {
 	QColor(240,52,121)//粉红
@@ -57,60 +57,6 @@ public:
     ScrollBar *scrollBar;
     ScrollZoomer::ScrollBarPosition position;
     Qt::ScrollBarPolicy mode;
-};
-
-class Zoomer_qwt: public ScrollZoomer
-{
-public:
-    Zoomer_qwt( QWidget *canvas ):
-        ScrollZoomer( canvas )
-    {
-        setRubberBandPen( QColor( Qt::darkGreen ) );
- //       setRubberBandPen( QPen( Qt::red ) );
-    }
-
-    virtual void rescale()
-    {
-        QwtScaleWidget *scaleWidget = plot()->axisWidget( yAxis() );
-        QwtScaleDraw *sd = scaleWidget->scaleDraw();
-
-        double minExtent = 0.0;
-        if ( zoomRectIndex() > 0 )
-        {
-            // When scrolling in vertical direction
-            // the plot is jumping in horizontal direction
-            // because of the different widths of the labels
-            // So we better use a fixed extent.
-
-            minExtent = sd->spacing() + sd->maxTickLength() + 1;
-            minExtent += sd->labelSize(
-                scaleWidget->font(), c_rangeMax ).width();
-        }
-
-        sd->setMinimumExtent( minExtent );
-
-        ScrollZoomer::rescale();
-    }
-
-    virtual QwtText trackerTextF( const QPointF &pos ) const
-    {
-///不出颜色？？？？？？？？？？？？？？？？？？？？？？？？？？？？？？？？？？？
-		return QwtText();
-// 
-//         QString s;
-//         s = QStringLiteral("(%1,%2)").arg(pos.x()).arg(pos.y());
-// 
-//         QwtText text( s );
-//         text.setColor( Qt::white );
-// 
-//         QColor c = rubberBandPen().color();
-//         text.setBorderPen( QPen( c ) );
-//         text.setBorderRadius( 6 );
-//         c.setAlpha( 170 );
-//         text.setBackgroundBrush( c );
-// 
-//         return text;
-    }
 };
 
 class Picker_qwt: public QwtPlotPicker
@@ -347,7 +293,8 @@ ScrollZoomer::ScrollZoomer( QWidget *canvas ):
     d_cornerWidget( NULL ),
     d_hScrollData( NULL ),
     d_vScrollData( NULL ),
-    d_inZoom( false )
+    d_inZoom( false ),
+    d_isEnable(true)
 {
     for ( int axis = 0; axis < QwtPlot::axisCnt; axis++ )
         d_alignCanvasToScales[ axis ] = false;
@@ -420,6 +367,17 @@ void ScrollZoomer::rescale()
     }
 
     QwtPlotZoomer::rescale();
+    updateScrollBars();
+}
+
+bool ScrollZoomer::isEnableScrollBar() const
+{
+    return d_isEnable;
+}
+
+void ScrollZoomer::on_enable_scrollBar(bool enable)
+{
+    d_isEnable = enable;
     updateScrollBars();
 }
 
@@ -635,7 +593,10 @@ void ScrollZoomer::updateScrollBars()
 
         if ( !sb->isVisibleTo( canvas() ) )
         {
-            sb->show();
+            if(d_isEnable)
+                sb->show();
+            else
+                sb->hide();
             layout->setCanvasMargin( layout->canvasMargin( xScrollBarAxis )
                 + sb->extent(), xScrollBarAxis );
         }
@@ -662,7 +623,10 @@ void ScrollZoomer::updateScrollBars()
 
         if ( !sb->isVisibleTo( canvas() ) )
         {
-            sb->show();
+            if(d_isEnable)
+                sb->show();
+            else
+                sb->hide();
             layout->setCanvasMargin( layout->canvasMargin( yScrollBarAxis )
                 + sb->extent(), yScrollBarAxis );
         }
@@ -679,13 +643,21 @@ void ScrollZoomer::updateScrollBars()
 
     if ( showHScrollBar && showVScrollBar )
     {
-        if ( d_cornerWidget == NULL )
+        if(d_isEnable)
         {
-            d_cornerWidget = new QWidget( canvas() );
-            d_cornerWidget->setAutoFillBackground( true );
-            d_cornerWidget->setPalette( plot()->palette() );
+            if ( d_cornerWidget == NULL )
+            {
+                d_cornerWidget = new QWidget( canvas() );
+                d_cornerWidget->setAutoFillBackground( true );
+                d_cornerWidget->setPalette( plot()->palette() );
+            }
+            d_cornerWidget->show();
         }
-        d_cornerWidget->show();
+        else
+        {
+            if ( d_cornerWidget )
+                d_cornerWidget->hide();
+        }
     }
     else
     {
@@ -962,6 +934,16 @@ void ChartWave_qwt::resizeEvent( QResizeEvent *event )
     // Qt 4.7.1: QGradient::StretchToDeviceMode is buggy on X11
     //updateGradient();
 }
+
+bool ChartWave_qwt::isEnableZoomerScroll() const
+{
+    Zoomer_qwt* zm = qobject_cast<Zoomer_qwt*>(m_zoomer);
+    if(zm)
+    {
+        return zm->isEnableScrollBar();
+    }
+    return false;
+}
 //========================================================================================
 //网格 grid 操作
 //========================================================================================
@@ -1218,13 +1200,19 @@ void ChartWave_qwt::enablePicker(bool enable)
 	emit enablePickerChanged(enable);
 }
 
-void ChartWave_qwt::setupZoomer()
+void ChartWave_qwt::setupZoomer(bool isHaveScroll)
 {
     if(nullptr == m_zoomer )
     {
-        m_zoomer = new Zoomer_qwt(canvas());//Zoomer_qwt( QwtPlot::xBottom, QwtPlot::yLeft,canvas() );
+        if(isHaveScroll)
+        {//带滚动条的缩放
+            m_zoomer = new Zoomer_qwt(canvas());//Zoomer_qwt( QwtPlot::xBottom, QwtPlot::yLeft,canvas() );
+        }
+        else
+        {//不带滚动条的缩放
+            m_zoomer = new QwtPlotZoomer(canvas());
+        }
         m_zoomer->setRubberBand( QwtPicker::RectRubberBand );
-        //m_zoomer->setRubberBandPen( QColor( Qt::green ) );
 
         m_zoomer->setTrackerMode( QwtPicker::ActiveOnly );
         m_zoomer->setTrackerPen( QColor( Qt::black ) );
@@ -1283,14 +1271,26 @@ void ChartWave_qwt::enableZoomer(bool enable)
 {
     if(nullptr == m_zoomer)
         setupZoomer();
-    m_zoomer->setEnabled( enable );
+    m_zoomer->setEnabled(enable);
     if(enable && isEnableCrosserPicker())//如果十指光标激活了，就关闭坐标提示
         m_zoomer->setTrackerMode( QwtPicker::AlwaysOff );
     if(enable && !isEnableCrosserPicker())
         m_zoomer->setTrackerMode( QwtPicker::AlwaysOn );
     m_zoomer->zoom( 0 );
     m_bEnableZoom = enable;
-	emit enableZoomerChanged(enable);
+    emit enableZoomerChanged(enable);
+}
+///
+/// \brief 设置是否显示滚动条
+/// \param enable
+///
+void ChartWave_qwt::enableZoomerScroll(bool enable)
+{
+    Zoomer_qwt* zm = qobject_cast<Zoomer_qwt*>(m_zoomer);
+    if(zm)
+    {
+        zm->on_enable_scrollBar(enable);
+    }
 }
 
 void ChartWave_qwt::setupLegend()

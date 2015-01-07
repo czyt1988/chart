@@ -50,6 +50,8 @@ void QwtChartSetDialog::addPlotSet(ChartWave_qwt* plot)
 		,groupItem,QStringLiteral("Y轴标题"),"Y轴标题",m_plot->axisTitle(QwtPlot::yLeft).text());
 	m_property_id.addVariantPropertyInGroup(m_variantManager,QVariant::Color
 		,groupItem,QStringLiteral("画布背景"),"画布背景",m_plot->canvasBackground().color());
+    m_property_id.addVariantPropertyInGroup(m_variantManager,QVariant::Bool
+        ,groupItem,QStringLiteral("缩放滚动条"),"缩放滚动条",m_plot->isEnableZoomerScroll());
 	m_property->addProperty(groupItem);
 
 }
@@ -170,6 +172,10 @@ void QwtChartSetDialog::onPropertyValueChanged(QtProperty * property, const QVar
 		{
 			m_plot->setCanvasBackground(QBrush(value.value<QColor>()));
 		}
+        else if("缩放滚动条" == id)
+        {
+            m_plot->enableZoomerScroll(value.toBool());
+        }
 	}
 	else
 	{

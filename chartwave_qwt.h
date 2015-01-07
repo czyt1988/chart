@@ -116,7 +116,9 @@ public:
     virtual bool eventFilter( QObject *, QEvent * );
 
     virtual void rescale();
-
+    bool isEnableScrollBar() const;
+public slots:
+    void on_enable_scrollBar(bool enable);
 protected:
     virtual ScrollBar *scrollBar( Qt::Orientation );
     virtual void updateScrollBars();
@@ -135,6 +137,65 @@ private:
 
     bool d_inZoom;
     bool d_alignCanvasToScales[ QwtPlot::axisCnt ];
+    bool d_isEnable;///< 标定是否显示滚动条
+};
+
+
+class Zoomer_qwt: public ScrollZoomer
+{
+    Q_OBJECT
+    const unsigned int c_rangeMax;
+public:
+    Zoomer_qwt( QWidget *canvas ):
+        ScrollZoomer( canvas )
+      ,c_rangeMax(1000)
+    {
+        setRubberBandPen( QColor( Qt::darkGreen ) );
+ //       setRubberBandPen( QPen( Qt::red ) );
+    }
+
+    virtual void rescale()
+    {
+        QwtScaleWidget *scaleWidget = plot()->axisWidget( yAxis() );
+        QwtScaleDraw *sd = scaleWidget->scaleDraw();
+
+        double minExtent = 0.0;
+        if ( zoomRectIndex() > 0 )
+        {
+            // When scrolling in vertical direction
+            // the plot is jumping in horizontal direction
+            // because of the different widths of the labels
+            // So we better use a fixed extent.
+
+            minExtent = sd->spacing() + sd->maxTickLength() + 1;
+            minExtent += sd->labelSize(
+                scaleWidget->font(), c_rangeMax ).width();
+        }
+
+        sd->setMinimumExtent( minExtent );
+
+        ScrollZoomer::rescale();
+    }
+
+    virtual QwtText trackerTextF( const QPointF &pos ) const
+    {
+///不出颜色？？？？？？？？？？？？？？？？？？？？？？？？？？？？？？？？？？？
+        return QwtText();
+//
+//         QString s;
+//         s = QStringLiteral("(%1,%2)").arg(pos.x()).arg(pos.y());
+//
+//         QwtText text( s );
+//         text.setColor( Qt::white );
+//
+//         QColor c = rubberBandPen().color();
+//         text.setBorderPen( QPen( c ) );
+//         text.setBorderRadius( 6 );
+//         c.setAlpha( 170 );
+//         text.setBackgroundBrush( c );
+//
+//         return text;
+    }
 };
 
 ///
@@ -338,7 +399,7 @@ public:
 public slots:
 	//功能性语句
     void enableZoomer(bool enable = true );
-
+    void enableZoomerScroll(bool enable = true);
     void enablePicker(bool enable = true );
 
 	void enableGrid(bool isShow = true);
@@ -358,6 +419,8 @@ public slots:
 	void showItem( const QVariant &itemInfo, bool on );
 
 	void enableDataPicker(bool enable = true);
+
+
 signals:
 	void enableZoomerChanged(bool enable);
 	void enablePickerChanged(bool enable);
@@ -384,6 +447,7 @@ private:
     bool m_bEnableCrosserPicker;
 public:
 	QwtPlotZoomer * zoomer(){return m_zoomer;}
+    bool isEnableZoomerScroll() const;
 public:
 	///
 	/// \brief 返回网格指针
@@ -413,7 +477,7 @@ private:
     ///
     /// \brief 建立缩放模式
     ///
-    void setupZoomer();
+    void setupZoomer(bool isHaveScroll = true);
     ///
     /// \brief 建立一个内置的picker
     ///

@@ -30,7 +30,9 @@ private:
 	QtGroupPropertyManager* m_propertyGroup;
 	QtVariantPropertyManager *m_variantManager;
 	QtVariantEditorFactory *m_variantFactory;
+
 	QtPropertyIdStorage<string> m_property_id;
+
 	QMap<QtVariantProperty*,QwtPlotCurve*> m_property_curve;
 	void createUI();
 	void addPlotSet(ChartWave_qwt* plot);
