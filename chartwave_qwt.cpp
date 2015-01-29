@@ -1765,7 +1765,7 @@ void ChartWave_qwt::setDateAxis(AxisDateScaleType type,int axisID,QwtDate::Inter
 
 void ChartWave_qwt::setDateAxis(QString type,int axisID ,QwtDate::IntervalType intType)
 {
-	QwtDateScaleDraw* dateScale;
+    QwtDateScaleDraw* dateScale;
 	dateScale = new QwtDateScaleDraw;
 	dateScale->setDateFormat(intType,type);
 	setAxisScaleDraw(axisID,dateScale);
