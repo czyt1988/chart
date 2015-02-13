@@ -359,22 +359,8 @@ public:
 
 	void setDateAxis(AxisDateScaleType type,int axisID = xBottom,QwtDate::IntervalType intType = QwtDate::Second);
 	void setDateAxis(QString type,int axisID = xBottom,QwtDate::IntervalType intType = QwtDate::Second);
-    ///
-    /// \brief 是否允许缩放
-    /// \return
-    ///
-    bool isEnableZoom() const
-    {
-        return m_bEnableZoom;
-    }
-    ///
-    /// \brief 是否允许十字光标
-    /// \return
-    ///
-    bool isEnableCrosserPicker() const
-    {
-        return m_bEnableCrosserPicker;
-    }
+
+
     ///
     /// \brief 获取尖峰的点 - 所谓尖峰是指三点a,b,c b>a && b>c 就说明b是尖峰
     /// \param sharpPoints 尖峰值引用
@@ -399,9 +385,12 @@ public:
 public slots:
 	//功能性语句
     void enableZoomer(bool enable = true );
-    void enableZoomerScroll(bool enable = true);
-    void enablePicker(bool enable = true );
 
+
+    void enableZoomerScroll(bool enable = true);
+
+
+    void enablePicker(bool enable = true );
 	void enableGrid(bool isShow = true);
 	void enableGridX(bool enable = true);
 	void enableGridY(bool enable = true);
@@ -433,6 +422,23 @@ signals:
 	void enableLegendChanged(bool enable);
 	void enableLegendPanelChanged(bool enable);
 	void enableDataPickerChanged(bool enable);
+public:
+    bool isEnableZoomer() const{return m_bEnableZoom;}
+    bool isEnableZoomerScroll() const;
+    ///
+    /// \brief 是否允许十字光标
+    /// \return
+    ///
+    bool isEnablePicker() const{return m_bEnableCrosserPicker;}
+    bool isEnableGrid() const;
+    bool isEnableGridX() const;
+    bool isEnableGridY() const;
+    bool isEnableGridXMin() const;
+    bool isEnableGridYMin() const;
+    bool isEnablePanner() const;
+    bool isEnableLegend() const;
+    bool isEnableLegendPanel() const;
+    bool isEnableDataPicker() const;
 protected:
     virtual void resizeEvent( QResizeEvent * );
 private:
@@ -447,7 +453,7 @@ private:
     bool m_bEnableCrosserPicker;
 public:
 	QwtPlotZoomer * zoomer(){return m_zoomer;}
-    bool isEnableZoomerScroll() const;
+
 public:
 	///
 	/// \brief 返回网格指针

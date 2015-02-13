@@ -207,7 +207,11 @@ void SAPlotChart::calcDataFeature(QwtPlotCurve *pC)
 
 void SAPlotChart::calcDataFeature_s(const QVector<QPointF>& points,ChartDataFeature& out_chartData)
 {
-    QVector<double> y = czy::QArrayEx::getVectPointFY(points);
+    QVector<double> y;
+    y.resize(points.size());
+    std::transform(points.begin(),points.end(),y.begin()
+                   ,[](const QPointF& f)->double
+    {return f.y();});
     out_chartData.data_featureData[STR_WDF_PointCounts] = double(points.size());
     out_chartData.data_featureData[STR_WDF_min_value] = *(std::min_element(y.begin(),y.end()));
     out_chartData.data_featureData[STR_WDF_max_value] = *(std::max_element(y.begin(),y.end()));

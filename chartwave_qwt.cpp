@@ -944,6 +944,74 @@ bool ChartWave_qwt::isEnableZoomerScroll() const
     }
     return false;
 }
+
+bool ChartWave_qwt::isEnableGrid() const
+{
+    if(m_grid)
+        return m_grid->isVisible();
+    return false;
+}
+
+bool ChartWave_qwt::isEnableGridX() const
+{
+    if(m_grid)
+        if(m_grid->isVisible())
+            return m_grid->xEnabled();
+    return false;
+}
+
+bool ChartWave_qwt::isEnableGridY() const
+{
+    if(m_grid)
+        if(m_grid->isVisible())
+            return m_grid->yEnabled();
+    return false;
+}
+
+bool ChartWave_qwt::isEnableGridXMin() const
+{
+    if(m_grid)
+        if(m_grid->isVisible())
+            return m_grid->xMinEnabled();
+    return false;
+}
+
+bool ChartWave_qwt::isEnableGridYMin() const
+{
+    if(m_grid)
+        if(m_grid->isVisible())
+            return m_grid->yMinEnabled();
+    return false;
+}
+
+bool ChartWave_qwt::isEnablePanner() const
+{
+    if(m_panner)
+        return m_panner->isEnabled();
+    return false;
+}
+
+bool ChartWave_qwt::isEnableLegend() const
+{
+    if(m_legend)
+        return m_legend->isVisible();
+    return false;
+}
+
+bool ChartWave_qwt::isEnableLegendPanel() const
+{
+    if(m_legendPanel)
+        return m_legendPanel->isVisible();
+    return false;
+
+}
+
+bool ChartWave_qwt::isEnableDataPicker() const
+{
+    if(m_dataPicker)
+        return m_dataPicker->isEnabled();
+    return false;
+}
 //========================================================================================
 //网格 grid 操作
 //========================================================================================
@@ -1191,9 +1259,9 @@ void ChartWave_qwt::enablePicker(bool enable)
 	m_picker->setEnabled( enable );
     if(nullptr != m_zoomer)
     {
-        if(enable && isEnableZoom())
+        if(enable && isEnableZoomer())
             m_zoomer->setTrackerMode( QwtPicker::AlwaysOff );
-        if(!enable && isEnableZoom())
+        if(!enable && isEnableZoomer())
             m_zoomer->setTrackerMode( QwtPicker::AlwaysOn );
     }
     m_bEnableCrosserPicker = enable;
@@ -1272,9 +1340,9 @@ void ChartWave_qwt::enableZoomer(bool enable)
     if(nullptr == m_zoomer)
         setupZoomer();
     m_zoomer->setEnabled(enable);
-    if(enable && isEnableCrosserPicker())//如果十指光标激活了，就关闭坐标提示
+    if(enable && isEnablePicker())//如果十指光标激活了，就关闭坐标提示
         m_zoomer->setTrackerMode( QwtPicker::AlwaysOff );
-    if(enable && !isEnableCrosserPicker())
+    if(enable && !isEnablePicker())
         m_zoomer->setTrackerMode( QwtPicker::AlwaysOn );
     m_zoomer->zoom( 0 );
     m_bEnableZoom = enable;
