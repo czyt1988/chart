@@ -6,11 +6,13 @@ include($$PWD/qwt_set.pri)
 
 HEADERS += \
     $$PWD/chartwave_qwt.h \
-    $$PWD/QwtChartSetDialog.h \
-    $$PWD/CurveSelectDialog.h \
-    $$PWD/SAPlotChart.h
+    $$PWD/QwtPlotPropertySetDialog.h \
+    $$PWD/CurveSelectDialog.h
+
 SOURCES += \
     $$PWD/chartwave_qwt.cpp \
-    $$PWD/QwtChartSetDialog.cpp \
-    $$PWD/CurveSelectDialog.cpp \
-    $$PWD/SAPlotChart.cpp
+    $$PWD/QwtPlotPropertySetDialog.cpp \
+    $$PWD/CurveSelectDialog.cpp
+
+#FORMS += \
+#    $$PWD/QwtPlotSetWidget.ui

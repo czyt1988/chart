@@ -36,7 +36,7 @@ QColor ChartWave_qwt::getRandLineColor()
 	{
 		static_qwt_clrIndex = 0;
 	}
-	return static_const_qwt_line_color[static_qwt_clrIndex];
+    return static_const_qwt_line_color[static_qwt_clrIndex];
 }
 
 class ScrollData
@@ -286,6 +286,23 @@ int ScrollBar::extent() const
     if ( orientation() == Qt::Horizontal )
         opt.state |= QStyle::State_Horizontal;
     return style()->pixelMetric( QStyle::PM_ScrollBarExtent, &opt, this );
+}
+
+ScrollZoomer::ScrollZoomer(int xAxis, int yAxis, QWidget* canvas):QwtPlotZoomer(xAxis,yAxis, canvas )
+  ,d_cornerWidget( NULL )
+  ,d_hScrollData( NULL )
+  ,d_vScrollData( NULL )
+  ,d_inZoom( false )
+  ,d_isEnable(true)
+{
+    for ( int axis = 0; axis < QwtPlot::axisCnt; axis++ )
+        d_alignCanvasToScales[ axis ] = false;
+
+    if ( !canvas )
+        return;
+
+    d_hScrollData = new ScrollData;
+    d_vScrollData = new ScrollData;
 }
 
 ScrollZoomer::ScrollZoomer( QWidget *canvas ):
@@ -897,6 +914,7 @@ QLineF CurveDataTracker::curveLineAt(
 ChartWave_qwt::ChartWave_qwt(QWidget *parent):QwtPlot(parent)
   ,m_grid(nullptr)
   ,m_zoomer(nullptr)
+  ,m_zoomerSecond(nullptr)
   ,m_picker(nullptr)
   ,m_panner(nullptr)
   ,m_legend(nullptr)
@@ -1118,6 +1136,8 @@ QwtPlotCurve* ChartWave_qwt::addCurve(const QVector<QPointF>& xyDatas)
 {
     QwtPlotCurve* pCurve = nullptr;
     pCurve = new QwtPlotCurve;
+    pCurve->setYAxis(yLeft);
+    pCurve->setXAxis(xBottom);
     pCurve->setStyle(QwtPlotCurve::Lines);
     pCurve->setSamples(xyDatas);
     pCurve->attach(this);
@@ -1136,6 +1156,8 @@ QwtPlotCurve* ChartWave_qwt::addCurve(std::vector<std::pair<double,double>>& xyD
         y.push_back(ite->second);
     }
     pCurve = new QwtPlotCurve;
+    pCurve->setYAxis(yLeft);
+    pCurve->setXAxis(xBottom);
   //  pCurve->setRenderHint( QwtPlotItem::RenderAntialiased );
     pCurve->setStyle(QwtPlotCurve::Lines);
     pCurve->setSamples(x,y);
@@ -1147,6 +1169,8 @@ QwtPlotCurve* ChartWave_qwt::addCurve(std::vector<double>& xDatas,std::vector<do
 {
     QwtPlotCurve* pCurve = nullptr;
     pCurve = new QwtPlotCurve;
+    pCurve->setYAxis(yLeft);
+    pCurve->setXAxis(xBottom);
     pCurve->setStyle(QwtPlotCurve::Lines);
     pCurve->setSamples(&xDatas[0],&yDatas[0],xDatas.size() <= yDatas.size() ? xDatas.size() : yDatas.size());
     pCurve->attach(this);
@@ -1157,6 +1181,8 @@ QwtPlotCurve* ChartWave_qwt::addCurve(const double *xData, const double *yData, 
 {
     QwtPlotCurve* pCurve = nullptr;
     pCurve = new QwtPlotCurve;
+    pCurve->setYAxis(yLeft);
+    pCurve->setXAxis(xBottom);
     pCurve->setStyle(QwtPlotCurve::Lines);
     pCurve->setSamples(xData,yData,size);
     pCurve->attach(this);
@@ -1168,6 +1194,8 @@ QwtPlotCurve* ChartWave_qwt::addCurve(const QVector< double > &xData
 {
     QwtPlotCurve* pCurve = nullptr;
     pCurve = new QwtPlotCurve;
+    pCurve->setYAxis(yLeft);
+    pCurve->setXAxis(xBottom);
     pCurve->setStyle(QwtPlotCurve::Lines);
     pCurve->setSamples(xData,yData);
     pCurve->attach(this);
@@ -1268,32 +1296,7 @@ void ChartWave_qwt::enablePicker(bool enable)
 	emit enablePickerChanged(enable);
 }
 
-void ChartWave_qwt::setupZoomer(bool isHaveScroll)
-{
-    if(nullptr == m_zoomer )
-    {
-        if(isHaveScroll)
-        {//带滚动条的缩放
-            m_zoomer = new Zoomer_qwt(canvas());//Zoomer_qwt( QwtPlot::xBottom, QwtPlot::yLeft,canvas() );
-        }
-        else
-        {//不带滚动条的缩放
-            m_zoomer = new QwtPlotZoomer(canvas());
-        }
-        m_zoomer->setRubberBand( QwtPicker::RectRubberBand );
 
-        m_zoomer->setTrackerMode( QwtPicker::ActiveOnly );
-        m_zoomer->setTrackerPen( QColor( Qt::black ) );
-
-        m_zoomer->setMousePattern( QwtEventPattern::MouseSelect2,
-                Qt::RightButton, Qt::ControlModifier );
-        m_zoomer->setMousePattern( QwtEventPattern::MouseSelect3,
-                Qt::RightButton );
-    }
-    QwtPlotMagnifier *magnifier = new QwtPlotMagnifier( canvas() );
-    magnifier->setMouseButton( Qt::NoButton );
-
-}
 void ChartWave_qwt::enablePanner(bool enable)
 {
 	if (enable)
@@ -1337,16 +1340,81 @@ void ChartWave_qwt::deletePanner()
 
 void ChartWave_qwt::enableZoomer(bool enable)
 {
-    if(nullptr == m_zoomer)
-        setupZoomer();
-    m_zoomer->setEnabled(enable);
-    if(enable && isEnablePicker())//如果十指光标激活了，就关闭坐标提示
-        m_zoomer->setTrackerMode( QwtPicker::AlwaysOff );
-    if(enable && !isEnablePicker())
-        m_zoomer->setTrackerMode( QwtPicker::AlwaysOn );
-    m_zoomer->zoom( 0 );
+    if(nullptr == m_zoomer /*|| nullptr == m_zoomerSecond*/)
+        setupZoomer(false);
+    if(enable)
+    {
+        m_zoomer->setZoomBase( false );
+        m_zoomer->setEnabled(enable);
+
+//        m_zoomerSecond->setZoomBase( false );
+//        m_zoomerSecond->setEnabled(enable);
+
+        if(enable && isEnablePicker())//如果十指光标激活了，就关闭坐标提示
+            m_zoomer->setTrackerMode( QwtPicker::AlwaysOff );
+        if(enable && !isEnablePicker())
+            m_zoomer->setTrackerMode( QwtPicker::AlwaysOn );
+        //m_zoomer->zoom( 0 );
+    }
+    else
+    {
+        m_zoomer->setEnabled(false);
+//        m_zoomerSecond->setEnabled(false);
+        //deleteZoomer();
+    }
     m_bEnableZoom = enable;
     emit enableZoomerChanged(enable);
+}
+void ChartWave_qwt::setupZoomer(bool isHaveScroll)
+{
+    if(nullptr == m_zoomer)
+    {
+        qDebug()<<"setup zoom";
+        Zoomer_qwt* zoom = new Zoomer_qwt(xBottom,yLeft, canvas());//Zoomer_qwt( QwtPlot::xBottom, QwtPlot::yLeft,canvas() );
+
+        zoom->on_enable_scrollBar(isHaveScroll);
+        zoom->setRubberBand( QwtPicker::RectRubberBand );
+
+        zoom->setTrackerMode( QwtPicker::ActiveOnly );
+        zoom->setTrackerPen( QColor( Qt::black ) );
+
+        zoom->setMousePattern( QwtEventPattern::MouseSelect2,
+                Qt::RightButton, Qt::ControlModifier );
+        zoom->setMousePattern( QwtEventPattern::MouseSelect3,
+                Qt::RightButton );
+        m_zoomer = zoom;
+    }
+    if(nullptr == m_zoomerSecond)
+    {
+//        Zoomer_qwt* zoom = new Zoomer_qwt(xTop,yRight, canvas());//Zoomer_qwt( QwtPlot::xBottom, QwtPlot::yLeft,canvas() );
+//        zoom->on_enable_scrollBar(isHaveScroll);
+//        zoom->setRubberBand( QwtPicker::RectRubberBand );
+
+//        zoom->setTrackerMode( QwtPicker::AlwaysOff );
+
+//        zoom->setMousePattern( QwtEventPattern::MouseSelect2,
+//                Qt::RightButton, Qt::ControlModifier );
+//        zoom->setMousePattern( QwtEventPattern::MouseSelect3,
+//                Qt::RightButton );
+//        m_zoomerSecond = zoom;
+    }
+    QwtPlotMagnifier *magnifier = new QwtPlotMagnifier( canvas() );
+    magnifier->setMouseButton( Qt::NoButton );
+
+}
+
+void ChartWave_qwt::deleteZoomer()
+{
+    if(m_zoomer)
+    {
+        delete m_zoomer;
+        m_zoomer = nullptr;
+    }
+    if(m_zoomerSecond)
+    {
+        delete m_zoomerSecond;
+        m_zoomerSecond = nullptr;
+    }
 }
 ///
 /// \brief 设置是否显示滚动条
@@ -1359,6 +1427,27 @@ void ChartWave_qwt::enableZoomerScroll(bool enable)
     {
         zm->on_enable_scrollBar(enable);
     }
+}
+///
+/// \brief 设置缩放重置
+///
+void ChartWave_qwt::setZoomReset()
+{
+    setAxisAutoScale(QwtPlot::yLeft,true);
+    setAxisAutoScale(QwtPlot::xBottom,true);
+    replot();
+    if(m_zoomer)
+    {
+        m_zoomer->setZoomBase(false);
+
+    }
+    if(m_zoomerSecond)
+    {
+        m_zoomerSecond->setZoomBase(false);
+    }
+    if(m_zoomer)
+        m_zoomer->zoom(0);
+//    qDebug()<<"zoomBase1:"<<m_zoomer->zoomBase()<<",zoomBase2:"<<m_zoomerSecond->zoomBase();
 }
 
 void ChartWave_qwt::setupLegend()
@@ -1514,11 +1603,12 @@ void ChartWave_qwt::getYDatas(QVector<double>& ys,int nCur)
     if(nullptr == cur){
         return;
     }
-    QwtPointArrayData* datas = static_cast<QwtPointArrayData*>(cur->data());
-    if(nullptr == datas){
-        return;
-    }
-    ys = datas->yData();
+    getYDatas(ys,cur);
+//    QwtPointArrayData* datas = static_cast<QwtPointArrayData*>(cur->data());
+//    if(nullptr == datas){
+//        return;
+//    }
+//    ys = datas->yData();
 }
 
 void ChartWave_qwt::getYDatas(QVector<double>& ys,const QString& strCurName)
@@ -1527,11 +1617,12 @@ void ChartWave_qwt::getYDatas(QVector<double>& ys,const QString& strCurName)
     if(nullptr == cur){
         return;
     }
-    QwtPointArrayData* datas = static_cast<QwtPointArrayData*>(cur->data());
-    if(nullptr == datas){
-        return;
-    }
-    ys = datas->yData();
+    getYDatas(ys,cur);
+//    QwtPointArrayData* datas = static_cast<QwtPointArrayData*>(cur->data());
+//    if(nullptr == datas){
+//        return;
+//    }
+//    ys = datas->yData();
 }
 
 void ChartWave_qwt::getXDatas(QVector<double>& xs,int nCur)
@@ -1540,11 +1631,12 @@ void ChartWave_qwt::getXDatas(QVector<double>& xs,int nCur)
     if(nullptr == cur){
         return;
     }
-    QwtPointArrayData* datas = static_cast<QwtPointArrayData*>(cur->data());
-    if(nullptr == datas){
-        return;
-    }
-    xs = datas->xData();
+    getXDatas(xs,cur);
+//    QwtPointArrayData* datas = static_cast<QwtPointArrayData*>(cur->data());
+//    if(nullptr == datas){
+//        return;
+//    }
+//    xs = datas->xData();
 }
 
 void ChartWave_qwt::getXDatas(QVector<double>& xs,const QString& strCurName)
@@ -1553,11 +1645,12 @@ void ChartWave_qwt::getXDatas(QVector<double>& xs,const QString& strCurName)
     if(nullptr == cur){
         return;
     }
-    QwtPointArrayData* datas = static_cast<QwtPointArrayData*>(cur->data());
-    if(nullptr == datas){
-        return;
-    }
-    xs = datas->xData();
+    getXDatas(xs,cur);
+//    QwtPointArrayData* datas = static_cast<QwtPointArrayData*>(cur->data());
+//    if(nullptr == datas){
+//        return;
+//    }
+//    xs = datas->xData();
 }
 
 void ChartWave_qwt::getXYDatas(QVector<QPointF>& xys,int nCur)
@@ -1566,15 +1659,16 @@ void ChartWave_qwt::getXYDatas(QVector<QPointF>& xys,int nCur)
     if(nullptr == cur){
         return;
     }
-    QwtPointArrayData* datas = static_cast<QwtPointArrayData*>(cur->data());
-    if(nullptr == datas){
-        return;
-    }
-    xys.reserve(datas->size());
-    for(unsigned int i=0;i< datas->size();++i)
-    {
-        xys.append(datas->sample(i));
-    }
+    getXYDatas(xys,cur);
+//    QwtPointArrayData* datas = static_cast<QwtPointArrayData*>(cur->data());
+//    if(nullptr == datas){
+//        return;
+//    }
+//    xys.reserve(datas->size());
+//    for(unsigned int i=0;i< datas->size();++i)
+//    {
+//        xys.append(datas->sample(i));
+//    }
 }
 
 void ChartWave_qwt::getXYDatas(QVector<QPointF>& xys,const QString& strCurName)
@@ -1583,15 +1677,16 @@ void ChartWave_qwt::getXYDatas(QVector<QPointF>& xys,const QString& strCurName)
     if(nullptr == cur){
         return;
     }
-    QwtPointArrayData* datas = static_cast<QwtPointArrayData*>(cur->data());
-    if(nullptr == datas){
-        return;
-    }
-    xys.reserve(datas->size());
-    for(unsigned int i=0;i< datas->size();++i)
-    {
-        xys.append(datas->sample(i));
-    }
+    getXYDatas(xys,cur);
+//    QwtPointArrayData* datas = static_cast<QwtPointArrayData*>(cur->data());
+//    if(nullptr == datas){
+//        return;
+//    }
+//    xys.reserve(datas->size());
+//    for(unsigned int i=0;i< datas->size();++i)
+//    {
+//        xys.append(datas->sample(i));
+//    }
 }
 
 void ChartWave_qwt::getXYDatas(QVector<double>& xs,QVector<double>& ys,int nCur)
@@ -1600,12 +1695,14 @@ void ChartWave_qwt::getXYDatas(QVector<double>& xs,QVector<double>& ys,int nCur)
     if(nullptr == cur){
         return;
     }
-    QwtPointArrayData* datas = static_cast<QwtPointArrayData*>(cur->data());
-    if(nullptr == datas){
-        return;
-    }
-    xs = datas->xData();
-    ys = datas->yData();
+    getYDatas(ys,cur);
+    getXDatas(xs,cur);
+//    QwtPointArrayData* datas = static_cast<QwtPointArrayData*>(cur->data());
+//    if(nullptr == datas){
+//        return;
+//    }
+//    xs = datas->xData();
+//    ys = datas->yData();
 }
 
 void ChartWave_qwt::getXYDatas(QVector<double>& xs,QVector<double>& ys,const QString& strCurName)
@@ -1614,12 +1711,191 @@ void ChartWave_qwt::getXYDatas(QVector<double>& xs,QVector<double>& ys,const QSt
     if(nullptr == cur){
         return;
     }
-    QwtPointArrayData* datas = static_cast<QwtPointArrayData*>(cur->data());
-    if(nullptr == datas){
-        return;
+    getYDatas(ys,cur);
+    getXDatas(xs,cur);
+//    QwtPointArrayData* datas = static_cast<QwtPointArrayData*>(cur->data());
+//    if(nullptr == datas){
+//        return;
+//    }
+//    xs = datas->xData();
+    //    ys = datas->yData();
+}
+///
+/// \brief 获取vector point的y
+/// \param xys vector point
+/// \param ys vector double y
+/// \return 获取的尺寸
+///
+size_t ChartWave_qwt::getYDatas(const QVector<QPointF>& xys, QVector<double>& ys)
+{
+    auto e = xys.end();
+    auto s = 0;
+    for(auto i=xys.begin();i!=e;++i,++s)
+    {
+        ys.push_back((*i).y());
     }
-    xs = datas->xData();
-    ys = datas->yData();
+    return s;
+}
+///
+/// \brief 获取vector point的x
+/// \param xys vector point
+/// \param xs vector double x
+/// \return 获取的尺寸
+///
+size_t ChartWave_qwt::getXDatas(const QVector<QPointF>& xys, QVector<double>& xs)
+{
+    auto e = xys.end();
+    auto s = 0;
+    for(auto i=xys.begin();i!=e;++i,++s)
+    {
+        xs.push_back((*i).x());
+    }
+    return s;
+}
+
+size_t ChartWave_qwt::getYDatas(QVector<double>& ys, QwtPlotCurve* cur, const QRectF &rang)
+{
+    QwtSeriesData<QPointF>* datas = cur->data();
+    size_t size = datas->size();
+    size_t realSize = 0;
+    if(!rang.isNull() && rang.isValid())
+    {
+        for(size_t i=0;i<size;++i)
+        {
+            if(rang.contains(datas->sample(i)))
+            {
+                ys.push_back(datas->sample(i).y());
+                ++realSize;
+            }
+        }
+    }
+    else
+    {
+        for(size_t i=0;i<size;++i)
+        {
+            ys.push_back(datas->sample(i).y());
+        }
+        realSize = size;
+    }
+    return realSize;
+}
+
+size_t ChartWave_qwt::getXDatas(QVector<double>& xs, QwtPlotCurve* cur, const QRectF &rang)
+{
+    QwtSeriesData<QPointF>* datas = cur->data();
+    size_t size = datas->size();
+    size_t realSize = 0;
+    if(!rang.isNull() && rang.isValid())
+    {
+        for(size_t i=0;i<size;++i)
+        {
+            if(rang.contains(datas->sample(i)))
+            {
+                xs.push_back(datas->sample(i).x());
+                ++realSize;
+            }
+        }
+    }
+    else
+    {
+        for(size_t i=0;i<size;++i)
+        {
+            xs.push_back(datas->sample(i).x());
+        }
+        realSize = size;
+    }
+    return realSize;
+}
+
+size_t ChartWave_qwt::getXYDatas(QVector<QPointF>& xys,const QwtPlotCurve* cur,const QRectF& rang)
+{
+    const QwtSeriesData<QPointF>* datas = cur->data();
+    size_t size = datas->size();
+    size_t realSize = 0;
+    if(!rang.isNull() && rang.isValid())
+    {
+        for(size_t i=0;i<size;++i)
+        {
+            if(rang.contains(datas->sample(i)))
+            {
+                xys.push_back(datas->sample(i));
+                ++realSize;
+            }
+        }
+    }
+    else
+    {
+        for(size_t i=0;i<size;++i)
+        {
+            xys.push_back(datas->sample(i));
+        }
+        realSize = size;
+    }
+    return realSize;
+}
+
+size_t ChartWave_qwt::getXYDatas(QVector<double>& xs, QVector<double>& ys, const QwtPlotCurve* cur, const QRectF& rang)
+{
+    const QwtSeriesData<QPointF>* datas = cur->data();
+    size_t size = datas->size();
+    size_t realSize = 0;
+    if(!rang.isNull() && rang.isValid())
+    {
+        for(size_t i=0;i<size;++i)
+        {
+            QPointF p = datas->sample(i);
+            if(rang.contains(p))
+            {
+                ys.push_back(p.y());
+                xs.push_back(p.x());
+                ++realSize;
+            }
+        }
+    }
+    else
+    {
+        for(size_t i=0;i<size;++i)
+        {
+            QPointF p = datas->sample(i);
+            ys.push_back(p.y());
+            xs.push_back(p.x());
+        }
+        realSize = size;
+    }
+    return realSize;
+}
+
+size_t ChartWave_qwt::getXYDatas(QVector<QPointF>& xys, QVector<double>& xs, QVector<double>& ys, const QwtPlotCurve* cur, const QRectF& rang)
+{
+    const QwtSeriesData<QPointF>* datas = cur->data();
+    size_t size = datas->size();
+    size_t realSize = 0;
+    if(!rang.isNull() && rang.isValid())
+    {
+        for(size_t i=0;i<size;++i)
+        {
+            QPointF p = datas->sample(i);
+            if(rang.contains(p))
+            {
+                xys.push_back(p);
+                ys.push_back(p.y());
+                xs.push_back(p.x());
+                ++realSize;
+            }
+        }
+    }
+    else
+    {
+        for(size_t i=0;i<size;++i)
+        {
+            QPointF p = datas->sample(i);
+            xys.push_back(p);
+            ys.push_back(p.y());
+            xs.push_back(p.x());
+        }
+        realSize = size;
+    }
+    return realSize;
 }
 
 void ChartWave_qwt::getSharpPeakPoint(QVector<QPointF>& sharpPoints,QwtPlotCurve* cur,bool getMax)
@@ -1836,5 +2112,18 @@ void ChartWave_qwt::setDateAxis(QString type,int axisID ,QwtDate::IntervalType i
     QwtDateScaleDraw* dateScale;
 	dateScale = new QwtDateScaleDraw;
 	dateScale->setDateFormat(intType,type);
-	setAxisScaleDraw(axisID,dateScale);
+    setAxisScaleDraw(axisID,dateScale);
+}
+///
+/// \brief 改变时间轴的时间显示格式，如果
+/// \param axis
+/// \param format
+/// \param intType
+///
+void ChartWave_qwt::setAxisDateFormat(QwtPlot::Axis axis, AxisDateScaleType format, QwtDate::IntervalType intType)
+{
+    QwtDateScaleDraw* dateScale = dynamic_cast<QwtDateScaleDraw*>(axisScaleDraw(axis));
+    if(!dateScale)
+        return;
+    setDateAxis(axisDateScaleType2String(format),axis,intType);
 }

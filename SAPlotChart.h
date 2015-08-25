@@ -12,7 +12,7 @@
 #include <QTimer>
 #include <QStandardItem>
 
-#include "QwtChartSetDialog.h"
+#include <QwtPlotPropertySetDialog.h>
 
 #include "QTDM.h"
 ///

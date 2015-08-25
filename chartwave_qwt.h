@@ -91,7 +91,7 @@ public:
         AttachedToScale,
         OppositeToScale
     };
-
+    ScrollZoomer (int xAxis, int yAxis, QWidget *);
     ScrollZoomer( QWidget * );
     virtual ~ScrollZoomer();
 
@@ -146,6 +146,13 @@ class Zoomer_qwt: public ScrollZoomer
     Q_OBJECT
     const unsigned int c_rangeMax;
 public:
+    Zoomer_qwt(int xAxis, int yAxis, QWidget* canvas):
+        ScrollZoomer(xAxis,yAxis, canvas )
+      ,c_rangeMax(1000)
+    {
+        setRubberBandPen( QColor( Qt::darkGreen ) );
+    }
+
     Zoomer_qwt( QWidget *canvas ):
         ScrollZoomer( canvas )
       ,c_rangeMax(1000)
@@ -153,7 +160,7 @@ public:
         setRubberBandPen( QColor( Qt::darkGreen ) );
  //       setRubberBandPen( QPen( Qt::red ) );
     }
-
+    virtual ~Zoomer_qwt(){}
     virtual void rescale()
     {
         QwtScaleWidget *scaleWidget = plot()->axisWidget( yAxis() );
@@ -177,25 +184,25 @@ public:
         ScrollZoomer::rescale();
     }
 
-    virtual QwtText trackerTextF( const QPointF &pos ) const
-    {
-///不出颜色？？？？？？？？？？？？？？？？？？？？？？？？？？？？？？？？？？？
-        return QwtText();
-//
-//         QString s;
-//         s = QStringLiteral("(%1,%2)").arg(pos.x()).arg(pos.y());
-//
-//         QwtText text( s );
-//         text.setColor( Qt::white );
-//
-//         QColor c = rubberBandPen().color();
-//         text.setBorderPen( QPen( c ) );
-//         text.setBorderRadius( 6 );
-//         c.setAlpha( 170 );
-//         text.setBackgroundBrush( c );
-//
-//         return text;
-    }
+//    virtual QwtText trackerTextF( const QPointF &pos ) const
+//    {
+/////不出颜色？？？？？？？？？？？？？？？？？？？？？？？？？？？？？？？？？？？
+//        return QwtText();
+////
+////         QString s;
+////         s = QStringLiteral("(%1,%2)").arg(pos.x()).arg(pos.y());
+////
+////         QwtText text( s );
+////         text.setColor( Qt::white );
+////
+////         QColor c = rubberBandPen().color();
+////         text.setBorderPen( QPen( c ) );
+////         text.setBorderRadius( 6 );
+////         c.setAlpha( 170 );
+////         text.setBackgroundBrush( c );
+////
+////         return text;
+//    }
 };
 
 ///
@@ -335,6 +342,16 @@ public:
     void getXYDatas(QVector<QPointF>& xys,const QString& strCurName);
     void getXYDatas(QVector<double>& xs,QVector<double>& ys,int nCur);
     void getXYDatas(QVector<double>& xs,QVector<double>& ys,const QString& strCurName);
+
+    static size_t getYDatas(const QVector<QPointF>& xys,QVector<double>& ys);
+    static size_t getXDatas(const QVector<QPointF>& xys,QVector<double>& xs);
+
+    static size_t getYDatas(QVector<double>& ys,QwtPlotCurve* cur,const QRectF& rang = QRectF());
+    static size_t getXDatas(QVector<double>& xs,QwtPlotCurve* cur,const QRectF& rang = QRectF());
+
+    static size_t getXYDatas(QVector<QPointF>& xys, const QwtPlotCurve* cur, const QRectF& rang = QRectF());
+    static size_t getXYDatas(QVector<double>& xs, QVector<double>& ys,const QwtPlotCurve* cur, const QRectF& rang = QRectF());
+    static size_t getXYDatas(QVector<QPointF>& xys, QVector<double>& xs, QVector<double>& ys,const QwtPlotCurve* cur, const QRectF& rang = QRectF());
     QRectF getPlottingRegionRang() const;
     QPoint getPlottingRegionDatas(QVector<QPointF>& out_xys,QwtPlotCurve* curve) const;
 	QPoint getPlottingRegionDatas(std::vector<double>& out_xs
@@ -343,23 +360,23 @@ public:
     size_t removeDataInRang(const QRectF& removeRang,QwtPlotCurve* curve);
 //	QPoint getPlottingRegionDatasX_s(QwtPlotCurve* curve,QwtInterval xInter,QVector<QPointF>& out_xys);
 	enum AxisDateScaleType{
-	h_m,
-	hh_mm,
-	h_m_s,
-	hh_mm_ss,
-	yyyy_M_d,
-	yyyy_M_d_h_m,
-	yyyy_M_d_h_m_s,
-	yyyy_MM_dd,
-	yyyy_MM_dd_hh_mm,
-	yyyy_MM_dd_hh_mm_ss
+    h_m=0,
+    hh_mm=1,
+    h_m_s=2,
+    hh_mm_ss=3,
+    yyyy_M_d=4,
+    yyyy_M_d_h_m=5,
+    yyyy_M_d_h_m_s=6,
+    yyyy_MM_dd=7,
+    yyyy_MM_dd_hh_mm=8,
+    yyyy_MM_dd_hh_mm_ss=9
 	};
 
 	static QString axisDateScaleType2String(AxisDateScaleType type);
 
 	void setDateAxis(AxisDateScaleType type,int axisID = xBottom,QwtDate::IntervalType intType = QwtDate::Second);
 	void setDateAxis(QString type,int axisID = xBottom,QwtDate::IntervalType intType = QwtDate::Second);
-
+    void setAxisDateFormat(QwtPlot::Axis axis, AxisDateScaleType format,QwtDate::IntervalType intType = QwtDate::Second );
 
     ///
     /// \brief 获取尖峰的点 - 所谓尖峰是指三点a,b,c b>a && b>c 就说明b是尖峰
@@ -382,13 +399,35 @@ public:
     static void sort_sharpPeak(QVector<QPointF>& sharpPointsSorted,QwtPlotCurve* cur,bool getMax = true);
     static void sort_sharpPeak(QVector<QPointF>& sharpPointsSorted,const QVector<QPointF>& Points,bool getMax = true);
 	static QColor getRandLineColor();
+
+    template<typename IT_X,typename IT_Y>
+    static void makeVectorPointF(IT_X x_begin,IT_X x_end,IT_Y y_begin,IT_Y y_end,QVector<QPointF>& points)
+    {
+        auto i = x_begin;
+        auto j = y_begin;
+        for(;i!=x_end && j!=y_end;++i,++j)
+        {
+            points.push_back(QPointF(*i,*j));
+        }
+    }
+    template<typename IT_X,typename IT_Y,typename IT_Point>
+    static void makeVectorPointF(IT_X x_begin,IT_X x_end,IT_Y y_begin,IT_Y y_end,IT_Point p_begin)
+    {
+        auto i = x_begin;
+        auto j = y_begin;
+        auto k = p_begin;
+        for(;i!=x_end && j!=y_end;++i,++j,++k)
+        {
+            (*k) = (QPointF(*i,*j));
+        }
+    }
 public slots:
 	//功能性语句
     void enableZoomer(bool enable = true );
 
 
     void enableZoomerScroll(bool enable = true);
-
+    void setZoomReset();
 
     void enablePicker(bool enable = true );
 	void enableGrid(bool isShow = true);
@@ -444,7 +483,8 @@ protected:
 private:
     QwtPlotGrid *m_grid;
     QwtPlotPicker *m_picker;
-    QwtPlotZoomer *m_zoomer;
+    Zoomer_qwt *m_zoomer;
+    Zoomer_qwt *m_zoomerSecond;
 	QwtPlotPanner* m_panner;
 	LegendItem* m_legend;
 	QwtLegend* m_legendPanel;
@@ -452,8 +492,8 @@ private:
     bool m_bEnableZoom;
     bool m_bEnableCrosserPicker;
 public:
-	QwtPlotZoomer * zoomer(){return m_zoomer;}
-
+    QwtPlotZoomer * zoomer(){return m_zoomer;}
+    QwtPlotZoomer * zoomerSecond(){return m_zoomerSecond;}
 public:
 	///
 	/// \brief 返回网格指针
@@ -484,6 +524,7 @@ private:
     /// \brief 建立缩放模式
     ///
     void setupZoomer(bool isHaveScroll = true);
+    void deleteZoomer();
     ///
     /// \brief 建立一个内置的picker
     ///
