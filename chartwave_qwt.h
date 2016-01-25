@@ -1,13 +1,14 @@
 ﻿#ifndef CHARTWAVE_QWT_H
 #define CHARTWAVE_QWT_H
+//qt
 #include <QMap>
 #include <QPointF>
-
 #include <qevent.h>
 #include <qglobal.h>
 #include <qscrollbar.h>
 #include <QRectF>
-
+#include <QList>
+//qwt
 #include <qwt_plot.h>
 #include <qwt_plot_marker.h>
 #include <qwt_plot_curve.h>
@@ -23,13 +24,12 @@
 #include <qwt_scale_engine.h>
 #include <qwt_scale_widget.h>
 #include <qwt_plot_layout.h>
-#include <QList>
 #include <qwt_symbol.h>
 #include <qwt_date.h>
 #include <qwt_plot_legenditem.h>
 #include <qwt_legend.h>
 #include <qwt_date.h>
-
+#include <qwt_plot_histogram.h>
 //class ScrollBar;
 //class ScrollZoomer;
 
@@ -306,6 +306,7 @@ public:
     void addCurve(QwtPlotCurve* pC);
     QwtPlotMarker* addVLine(double val);
     QwtPlotMarker* addHLine(double val);
+    QwtPlotHistogram* addHistogram(const QVector< QwtIntervalSample > &sample);
     //========================================================================================
     //网格 grid 操作
     //========================================================================================

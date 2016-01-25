@@ -14,7 +14,7 @@
 
 #include <QwtPlotPropertySetDialog.h>
 
-#include "QTDM.h"
+//#include "QTDM.h"
 ///
 /// \brief 用于记录常用的特征数值信息
 ///

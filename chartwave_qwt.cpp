@@ -828,7 +828,7 @@ QRect CurveDataTracker::trackerRect( const QFont &font ) const
 // 		}
 // 	}
 
-	int heigth = r.height();
+//	int heigth = r.height();
 	r.moveTop(pickArea().boundingRect().top());
 	return r;
 }
@@ -1227,6 +1227,17 @@ QwtPlotMarker* ChartWave_qwt::addHLine(double val)
     marker->setItemAttribute( QwtPlotItem::Legend, true );
     marker->attach( this );
     return marker;
+}
+
+QwtPlotHistogram*ChartWave_qwt::addHistogram(const QVector<QwtIntervalSample>& sample)
+{
+    QwtPlotHistogram* his = new QwtPlotHistogram();
+    his->setSamples (sample);
+    his->setYAxis(yLeft);
+    his->setXAxis(xBottom);
+    his->setStyle (QwtPlotHistogram::Columns);
+    his->attach (this);
+    return his;
 }
 
 ///

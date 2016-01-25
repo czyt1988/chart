@@ -243,7 +243,7 @@ void QwtPlotPropertySetDialog::addAxisSet(QtProperty* parentGroup, ChartWave_qwt
 {
     m_enableSet = false;
     QtVariantProperty *pro = nullptr;
-    QwtScaleWidget* scaleWidget = plot->axisWidget(axis);
+    //QwtScaleWidget* scaleWidget = plot->axisWidget(axis);
     QwtScaleDraw *scaleDraw = plot->axisScaleDraw(axis);
     QwtDateScaleDraw* dateScale = dynamic_cast<QwtDateScaleDraw*>(scaleDraw);
     //轴详细设置
@@ -441,7 +441,7 @@ void QwtPlotPropertySetDialog::setChartPtr(ChartWave_qwt *chart)
 void QwtPlotPropertySetDialog::updateAxisValue(QwtPlot::Axis axis)
 {
     QwtInterval inv= m_plot->axisInterval(axis);
-    QwtScaleWidget* scaleWidget = m_plot->axisWidget(axis);
+    //QwtScaleWidget* scaleWidget = m_plot->axisWidget(axis);
     QwtScaleDraw *scaleDraw = m_plot->axisScaleDraw(axis);
     QwtDateScaleDraw* dateScale = dynamic_cast<QwtDateScaleDraw*>(scaleDraw);
     m_property_id.setVarPropertyData(axisPropertyID(axis,4)
